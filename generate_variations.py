@@ -112,8 +112,6 @@ def generate_variations(template_file, output_dir='kernels'):
     """
 
     # Read template
-    print(f"\n📄 Reading template: {template_file}")
-
     if not os.path.exists(template_file):
         print(f"Template file not found: {template_file}")
         return []
@@ -222,17 +220,13 @@ def main():
     template_file = 'microkernel_template.ll'
     output_dir = 'kernels'
 
-    # Generate variations
     variations = generate_variations(template_file, output_dir)
 
     if not variations:
         print("\nNo variations generated. Exiting.")
         return
 
-    # Show examples
     show_examples(variations)
-
-    # Verify a few random variations
 
     import random
     test_indices = random.sample(range(len(variations)), min(5, len(variations)))

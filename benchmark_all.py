@@ -2,8 +2,6 @@
 import os
 import json
 import subprocess
-import sys
-from pathlib import Path
 
 def compile_kernel(llvm_file, output_obj):
     cmd = ['clang', '-x', 'ir', '-c', '-O3', '-march=native', llvm_file, '-o', output_obj]
@@ -37,9 +35,9 @@ def run_benchmark(exe_file, tile_m, tile_n, tile_k, num_runs=100):
     max_time_us = None
     gflops = None
 
+    # "Average time: 91.809 us (0.091809 ms)"
     for line in output.split('\n'):
         if 'Average time:' in line:
-            # "Average time: 91.809 us (0.091809 ms)"
             avg_time_us = float(line.split()[2])
         elif 'Min time:' in line:
             min_time_us = float(line.split()[2])
@@ -82,7 +80,6 @@ def main():
             print("FAILED (link)")
             continue
 
-        # Run benchmark
         bench_results = run_benchmark(exe_file, config['tile_m'], config['tile_n'], config['tile_k'], num_runs=100)
         if bench_results is None:
             print("FAILED (run)")
@@ -97,8 +94,8 @@ def main():
     with open(output_file, 'w') as f:
         json.dump(results, indent=2, fp=f)
 
-    print(f"\n✓ Benchmarked {len(results)}/{len(features)} kernels")
-    print(f"✓ Results saved to {output_file}")
+    print(f"\nBenchmarked {len(results)}/{len(features)} kernels")
+    print(f"Results saved to {output_file}")
 
     if results:
         times = [r['avg_time_us'] for r in results]
