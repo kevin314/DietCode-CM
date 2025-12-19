@@ -10,6 +10,7 @@ Shows how the two-stage approach makes dynamic dispatch efficient:
 import pickle
 import numpy as np
 from math import ceil
+import json
 
 class Dispatcher:
     """
@@ -19,28 +20,29 @@ class Dispatcher:
     Stage 2 adaptation computed cheaply for any size.
     """
 
-    def __init__(self, model_path):
+    def __init__(self, model_path, kernel_config_file='kernels/configs.json'):
         with open(model_path, 'rb') as f:
             model_data = pickle.load(f)
             self.fMK_model = model_data['fMK_model']
             self.stage1_feature_names = model_data['stage1_feature_names']
 
-        self.kernel_library = [
-            (16, 16, 8),
-            (32, 32, 16),
-            (64, 64, 32),
-            (128, 128, 32),
-        ]
+        with open(kernel_config_file, 'r') as f:
+            configs = json.load(f)
 
-        print("Pre-computing Stage 1 costs (micro-kernel quality)...")
+        self.kernel_library = sorted(set([
+            (c['tile_m'], c['tile_n'], c['tile_k'])
+            for c in configs
+        ]))
+
+        print(f"Loaded {len(self.kernel_library)} kernel configurations from {kernel_config_file}")
+        print("\nPre-computing Stage 1 costs (micro-kernel quality)...")
+
         self.base_costs = {}
-        for tiles in self.kernel_library:
+        for i, tiles in enumerate(self.kernel_library):
             base_cost = self._compute_base_cost(tiles)
             self.base_costs[tiles] = base_cost
-            print(f"  tiles={tiles}: base_cost={base_cost*1e6:.2f} us")
 
-        print("\n Stage 1 costs pre-computed.\n")
-
+        print(f"\nStage 1 costs pre-computed for {len(self.kernel_library)} configurations.\n")
     def _compute_base_cost(self, tiles):
         """Stage 1: Compute base cost from micro-kernel features."""
         from train_two_stage_model import extract_microkernel_features
@@ -60,18 +62,12 @@ class Dispatcher:
         """
         tile_m, tile_n, tile_k = tiles
 
-        # How many blocks needed?
         num_blocks_m = ceil(M / tile_m)
         num_blocks_n = ceil(N / tile_n)
         num_k_tiles = ceil(K / tile_k)
 
-        # Training used 1 block in M,N dimensions, so scale by block count
-        # This is the key: runtime scales linearly with # of blocks!
         block_scale = num_blocks_m * num_blocks_n * num_k_tiles
 
-        # Get base adaptation (what training used for 1 block)
-        # For tiles=(16,16,8) training had: adapt ≈ 256
-        # This represents the "iterations per block"
         from train_two_stage_model import compute_adaptation_factors
         training_config = {'tile_m': tile_m, 'tile_n': tile_n, 'tile_k': tile_k}
         base_adapt = compute_adaptation_factors(training_config)
@@ -114,16 +110,15 @@ def main():
 
     dispatcher = Dispatcher('two_stage_cost_model.pkl')
 
-    # Test on various runtime sizes
     test_sizes = [
-        (64, 32, 128),      # Small
-        (128, 64, 256),     # Medium
-        (256, 128, 512),    # Large
-        (512, 256, 1024),   # Very large
-        (1024, 512, 2048),  # Huge
-        (64, 64, 64),       # Square small
-        (256, 256, 256),    # Square medium
-        (512, 512, 512),    # Square large
+        (64, 32, 128),
+        (128, 64, 256),
+        (256, 128, 512),
+        (512, 256, 1024),
+        (1024, 512, 2048),
+        (64, 64, 64),
+        (256, 256, 256),
+        (512, 512, 512),
     ]
 
     import time
