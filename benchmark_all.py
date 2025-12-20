@@ -54,18 +54,19 @@ def run_benchmark(exe_file, tile_m, tile_n, tile_k, num_runs=100):
     }
 
 def main():
-    with open('kernels/parsed_features.json', 'r') as f:
-        features = json.load(f)
+    with open('kernels/configs_unrolled.json', 'r') as f:
+        configs = json.load(f)
 
     results = []
 
-    print(f"Benchmarking {len(features)} kernels...\n")
+    print(f"Benchmarking {len(configs)} kernels...\n")
 
-    for i, config in enumerate(features):
+    for i, config in enumerate(configs):
         kernel_id = config['id']
-        llvm_file = f'kernels/microkernel_{kernel_id}.ll'
+        llvm_file = config['file']
+        unroll_factor = config.get('unroll_factor', 1)
 
-        print(f"[{i+1}/{len(features)}] Processing {llvm_file} (tiles=[{config['tile_m']},{config['tile_n']},{config['tile_k']}])...", end=' ')
+        print(f"[{i+1}/{len(configs)}] Processing {llvm_file} (tiles=[{config['tile_m']},{config['tile_n']},{config['tile_k']}], unroll={unroll_factor})...", end=' ')
 
         # Compile to object
         os.makedirs('build', exist_ok=True)
@@ -94,7 +95,7 @@ def main():
     with open(output_file, 'w') as f:
         json.dump(results, indent=2, fp=f)
 
-    print(f"\nBenchmarked {len(results)}/{len(features)} kernels")
+    print(f"\nBenchmarked {len(results)}/{len(configs)} kernels")
     print(f"Results saved to {output_file}")
 
     if results:

@@ -20,7 +20,7 @@ class Dispatcher:
     Stage 2 adaptation computed cheaply for any size.
     """
 
-    def __init__(self, model_path, kernel_config_file='kernels/configs.json'):
+    def __init__(self, model_path, kernel_config_file='kernels/configs_unrolled.json'):
         with open(model_path, 'rb') as f:
             model_data = pickle.load(f)
             self.fMK_model = model_data['fMK_model']
@@ -29,38 +29,46 @@ class Dispatcher:
         with open(kernel_config_file, 'r') as f:
             configs = json.load(f)
 
-        self.kernel_library = sorted(set([
-            (c['tile_m'], c['tile_n'], c['tile_k'])
+        self.kernel_library = [
+            {
+                'tile_m': c['tile_m'],
+                'tile_n': c['tile_n'],
+                'tile_k': c['tile_k'],
+                'unroll_factor': c.get('unroll_factor', 1),
+                'file': c['file']
+            }
             for c in configs
-        ]))
+        ]
 
         print(f"Loaded {len(self.kernel_library)} kernel configurations from {kernel_config_file}")
         print("\nPre-computing Stage 1 costs (micro-kernel quality)...")
 
         self.base_costs = {}
-        for i, tiles in enumerate(self.kernel_library):
-            base_cost = self._compute_base_cost(tiles)
-            self.base_costs[tiles] = base_cost
+        for i, config in enumerate(self.kernel_library):
+            base_cost = self._compute_base_cost(config)
+            config_key = (config['tile_m'], config['tile_n'], config['tile_k'], config['unroll_factor'])
+            self.base_costs[config_key] = base_cost
 
         print(f"\nStage 1 costs pre-computed for {len(self.kernel_library)} configurations.\n")
-    def _compute_base_cost(self, tiles):
+    def _compute_base_cost(self, config):
         """Stage 1: Compute base cost from micro-kernel features."""
         from train_two_stage_model import extract_microkernel_features
 
-        config = {'tile_m': tiles[0], 'tile_n': tiles[1], 'tile_k': tiles[2]}
         mk_features = extract_microkernel_features(config)
 
         feature_vector = np.array([[mk_features[k] for k in self.stage1_feature_names]])
         return self.fMK_model.predict(feature_vector)[0]
 
-    def _compute_adaptation(self, M, N, K, tiles):
+    def _compute_adaptation(self, M, N, K, config):
         """
         Compute adaptation factor for arbitrary problem size.
 
         Training used M=tile_m, N=tile_n (1 block in each dim).
         For multiple blocks, we scale by the number of blocks needed.
         """
-        tile_m, tile_n, tile_k = tiles
+        tile_m = config['tile_m']
+        tile_n = config['tile_n']
+        tile_k = config['tile_k']
 
         num_blocks_m = ceil(M / tile_m)
         num_blocks_n = ceil(N / tile_n)
@@ -79,30 +87,31 @@ class Dispatcher:
         """
         Pick best micro-kernel for runtime size (M, N, K).
         """
-        best_tiles = None
+        best_config = None
         best_time = float('inf')
 
-        for tiles in self.kernel_library:
+        for config in self.kernel_library:
             # Stage 1: Load pre-computed base cost
-            base_cost = self.base_costs[tiles]
+            config_key = (config['tile_m'], config['tile_n'], config['tile_k'], config['unroll_factor'])
+            base_cost = self.base_costs[config_key]
 
             # Stage 2: Compute adaptation for this size
-            adaptation = self._compute_adaptation(M, N, K, tiles)
+            adaptation = self._compute_adaptation(M, N, K, config)
 
             predicted_time = base_cost * adaptation
 
             if predicted_time < best_time:
                 best_time = predicted_time
-                best_tiles = tiles
+                best_config = config
 
-        return best_tiles, best_time
+        return best_config, best_time
 
     def matmul_dynamic(self, M, N, K):
         """Execute dynamic matmul - picks best config at runtime."""
-        tiles, predicted_time = self.dispatch(M, N, K)
-        print(f"Size ({M:4d}, {N:4d}, {K:4d}) → tiles={tiles}, "
-              f"predicted={predicted_time*1e6:.1f} us")
-        return tiles
+        config, predicted_time = self.dispatch(M, N, K)
+        print(f"Size ({M:4d}, {N:4d}, {K:4d}) → tiles=({config['tile_m']},{config['tile_n']},{config['tile_k']}), "
+              f"unroll={config['unroll_factor']}, predicted={predicted_time*1e6:.1f} us")
+        return config
 
 
 def main():

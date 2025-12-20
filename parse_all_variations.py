@@ -35,7 +35,8 @@ def parse_all_variations(config_file='kernels/configs.json'):
         # Calculate total iterations (excluding K_outer which is dynamic)
         total_iters = analysis['total_iterations']
 
-        K = 128  # Assume this for now
+        # K dimension scales with tile_k: K = 16 * tile_k
+        K = 16 * config['tile_k']
         k_outer_iters = K // config['tile_k']
 
         total_flops_static = total_iters * k_outer_iters * analysis['flops_per_iteration']
@@ -47,6 +48,7 @@ def parse_all_variations(config_file='kernels/configs.json'):
             'tile_m': config['tile_m'],
             'tile_n': config['tile_n'],
             'tile_k': config['tile_k'],
+            'unroll_factor': config.get('unroll_factor', 1),
 
             # Per iteration (innermost loop)
             'flops_per_iter': analysis['flops_per_iteration'],
@@ -58,7 +60,6 @@ def parse_all_variations(config_file='kernels/configs.json'):
             'total_iterations': total_iters,
             'k_outer_iterations': k_outer_iters,
 
-            # Total work (for K=128)
             'total_flops': total_flops_static,
             'total_bytes': total_bytes_static,
             'oi_total': oi_total,
@@ -98,7 +99,7 @@ def print_tile_features(results):
 
 
 def main():
-    results = parse_all_variations()
+    results = parse_all_variations('kernels/configs_unrolled.json')
     print_tile_features(results)
 
     output_file = 'kernels/parsed_features.json'

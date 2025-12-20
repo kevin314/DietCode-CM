@@ -7,6 +7,13 @@ Takes the template LLVM IR and generates 48 variations with different tile sizes
 python generate_variations.py
 ```
 
+Then generate the unrolled variations for each of these 48 kernels for a total of 144 variations.
+
+**Command:**
+```bash
+python generate_unrolled_variations.py
+```
+
 ### Step 2: Parse Features from LLVM IR
 
 Extracts features from each LLVM IR file (FLOPs, memory ops, loop structure).
@@ -26,6 +33,8 @@ python parse_all_variations.py
 ```bash
 python benchmark_all.py
 ```
+
+This may take a few minutes.
 
 ### Step 4: Train Two-Stage Cost Model
 

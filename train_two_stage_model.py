@@ -35,7 +35,7 @@ def extract_microkernel_features(config):
     features['oi_microkernel'] = features['work_per_tile'] / features['bytes_per_tile']
 
     features['loop_depth'] = 5  # batch, M, N, K_outer, K_inner
-    features['unroll_factor'] = 1  # Currently no unrolling
+    features['unroll_factor'] = config.get('unroll_factor', 1)
     features['vector_width'] = 1  # Currently no vectorization
 
     features['inner_loop_size'] = tile_k
