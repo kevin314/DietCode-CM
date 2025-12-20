@@ -1,3 +1,24 @@
+## Requirements
+
+### System Requirements
+- **LLVM 18**: The LLVM opt tool is required for loop unrolling transformations
+  - Expected location: `/usr/lib/llvm-18/bin/opt`
+  - Install: `sudo apt-get install llvm-18`
+- **Clang/Clang++**: For compiling LLVM IR to object files and linking
+  - Install: `sudo apt-get install clang`
+
+### Python Dependencies
+- **Python 3.7+**
+- **Required packages**:
+  ```bash
+  pip install numpy scikit-learn
+  ```
+  - `numpy`: Array operations and numerical computation
+  - `scikit-learn`: Gradient Boosting Regressor for cost model training
+
+
+## Usage
+
 ### Step 0: Extract Microkernel
 Go to https://github.com/ChinDanIllinois/cs521finalproject, and pull the latest version. Follow the instructions to build XLA from source, targeting CPU https://openxla.org/xla/build_from_source. Utilize bazel to build the target "//xla/tools:hlo-opt". Then, use the following command to generate the corresponding LLVM IR, which will be printed to stderr.
 **Command:**
@@ -5,6 +26,8 @@ Go to https://github.com/ChinDanIllinois/cs521finalproject, and pull the latest 
 ./bazel-bin/xla/tools/hlo-opt --platform=cpu --stage=llvm-before-optimizations {hlo_file.hlo}
 ```
 The hlo_file.hlo we provide should produce the corresponding template LLVM IR.
+
+This LLVM IR also already exists in the repo as microkernel_template.ll, so this first step is optional and only if you want to compile a different source file.
 
 ### Step 1: Generate LLVM IR Variations
 
