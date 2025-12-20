@@ -1,0 +1,10 @@
+HloModule batched_matmul
+
+ENTRY main {
+  %A = f32[8,64,<=128]{2,1,0} parameter(0)
+
+  %B = f32[8,<=128,32]{2,1,0} parameter(1)
+
+  ROOT %out = f32[8,64,32]{2,1,0} dot(%A, %B),
+       lhs_contracting_dims={2}, rhs_contracting_dims={1}, lhs_batch_dims={0}, rhs_batch_dims={0}
+}
