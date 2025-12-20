@@ -15,7 +15,7 @@ def apply_unrolling(input_llvm, output_llvm, unroll_factor):
     Apply loop unrolling using LLVM opt.
 
     """
-    opt_path = '/usr/lib/llvm-18/bin/opt'
+    opt_path = 'opt'
 
     if unroll_factor == 1:
         if input_llvm == output_llvm:
