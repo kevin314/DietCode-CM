@@ -1,3 +1,11 @@
+### Step 0: Extract Microkernel
+Go to https://github.com/ChinDanIllinois/cs521finalproject, and pull the latest version. Follow the instructions to build XLA from source, targeting CPU https://openxla.org/xla/build_from_source. Utilize bazel to build the target "//xla/tools:hlo-opt". Then, use the following command to generate the corresponding LLVM IR, which will be printed to stderr.
+**Command:**
+```bash
+./bazel-bin/xla/tools/hlo-opt --platform=cpu --stage=llvm-before-optimizations {hlo_file.hlo}
+```
+The hlo_file.hlo we provide should produce the corresponding template LLVM IR.
+
 ### Step 1: Generate LLVM IR Variations
 
 Takes the template LLVM IR and generates 48 variations with different tile sizes.
