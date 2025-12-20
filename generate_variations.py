@@ -29,7 +29,7 @@ def apply_replacements(llvm_content, tile_m, tile_n, tile_k):
     """
     modified = llvm_content
 
-    # 1. Replace loop bounds
+    total_k = 16 * tile_k
 
     # M loop bound
     # Original: icmp uge i64 %out.indvar.lhs.0, 64
@@ -52,34 +52,44 @@ def apply_replacements(llvm_content, tile_m, tile_n, tile_k):
         f'icmp uge i64 %out.indvar.reduction, {tile_k}'
     )
 
+    # K stride multiplier for outer reduction loop
+    # Original: %outer_pos = mul i64 %out.indvar.outer_reduction, 8
+    modified = modified.replace(
+
+        'mul i64 %out.indvar.outer_reduction, 8',
+
+        f'mul i64 %out.indvar.outer_reduction, {tile_k}'
+
+    )
+
     # Replace tensor dimension declarations
 
     # Array type for A matrix: [batch x M x K]
     # Original: [8 x [64 x [128 x float]]]
     modified = modified.replace(
         '[8 x [64 x [128 x float]]]',
-        f'[8 x [{tile_m} x [128 x float]]]'
+        f'[8 x [{tile_m} x [{total_k} x float]]]'
     )
 
     # Subarray type for A: [M x K]
     # Original: [64 x [128 x float]]
     modified = modified.replace(
         '[64 x [128 x float]]',
-        f'[{tile_m} x [128 x float]]'
+        f'[{tile_m} x [{total_k} x float]]'
     )
 
     # Array type for B matrix: [batch x K x N]
     # Original: [8 x [128 x [32 x float]]]
     modified = modified.replace(
         '[8 x [128 x [32 x float]]]',
-        f'[8 x [128 x [{tile_n} x float]]]'
+        f'[8 x [{total_k} x [{tile_n} x float]]]'
     )
 
     # Subarray type for B: [K x N]
     # Original: [128 x [32 x float]]
     modified = modified.replace(
         '[128 x [32 x float]]',
-        f'[128 x [{tile_n} x float]]'
+        f'[{total_k} x [{tile_n} x float]]'
     )
 
     # Array type for C matrix (output): [batch x M x N]

@@ -25,7 +25,7 @@ struct XLA_CPU_KernelArg {
 };
 
 // External symbol required by the kernel
-extern "C" uint64_t size_global_ptr = 128;  // K dimension size
+extern "C" uint64_t size_global_ptr = 0;
 
 // External kernel function from compiled LLVM IR
 extern "C" void* out_kernel(XLA_CPU_KernelCallFrame* frame);
@@ -49,9 +49,10 @@ int main(int argc, char** argv) {
 
     // Arrays: A[batch, tile_m, K], B[batch, K, tile_n], C[batch, tile_m, tile_n]
     const int batch = 8;
-    const int K = 128;
+    const int K = 16 * tile_k;  // K scales with tile_k to match generated kernels
 
-    // Allocate input/output arrays
+    size_global_ptr = K;
+
     float* A = (float*)malloc(batch * tile_m * K * sizeof(float));
     float* B = (float*)malloc(batch * K * tile_n * sizeof(float));
     float* C = (float*)malloc(batch * tile_m * tile_n * sizeof(float));

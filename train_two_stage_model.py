@@ -60,7 +60,7 @@ def compute_adaptation_factors(config, num_cores=16):
     batch = 8
     M = tile_m  # In our data, M varies with tile_m
     N = tile_n  # In our data, N varies with tile_n
-    K = 128     # Fixed K dimension
+    K = 16 * tile_k 
 
     # Core Occupancy Factor (DietCode's fOCC)
     num_blocks_m = ceil(M / tile_m)  # Usually 1 for our data
@@ -144,9 +144,10 @@ def train_two_stage_model(data):
     # Train Stage 1 model
     print("\nTraining Stage 1 model (fMK - micro-kernel cost)...")
     fMK_model = GradientBoostingRegressor(
-        n_estimators=100,
+        n_estimators=50,
         learning_rate=0.1,
-        max_depth=5,
+        max_depth=3,
+        min_samples_split=4,
         random_state=42
     )
     fMK_model.fit(X_mk_train, y_mk_train)
